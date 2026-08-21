@@ -433,14 +433,19 @@ with tab2:
             if month_revenue_total == 0:
                 month_revenue_total = sum(parse_money(order.get("tongsotien")) for order in orders if get_order_date(order) and get_order_date(order).year == current_year and get_order_date(order).month == current_month)
 
-            st.markdown(
+            st.success(
                 f"**Tổng số tiền thu được trong 1 tháng (4 tuần):** {format_money(month_revenue_total)}"
             )
-            st.success(
+            st.markdown(
                 f"**Tổng số đơn của tuần ({week_start.strftime('%d/%m/%Y')} đến {week_end.strftime('%d/%m/%Y')}):** {total_week_orders} đơn\n"
+            )
+            st.markdown(
                 f"**Tổng số tiền phải thu trong tuần:** {format_money(total_due)}\n"
+            )
+            st.markdown(
                 f"**Tổng số tiền đã có trong tuần:** {format_money(total_collected)}"
             )
+
             account_status_map = {}
             for user in nguoidung_rows:
                 order_code = str(user.get("maOrder", "") or "").strip()
