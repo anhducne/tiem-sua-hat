@@ -5,9 +5,16 @@ import json
 from datetime import datetime, timedelta
 import pytz
 import config as cfg
+from auth_utils import get_cookie_manager, read_admin_auth_state, save_admin_auth_state, clear_admin_auth_state
+
 # --- BẢO MẬT ĐĂNG NHẬP ---
 if "admin_logged_in" not in st.session_state:
     st.session_state.admin_logged_in = False
+if "admin_username" not in st.session_state:
+    st.session_state.admin_username = ""
+
+cookie_manager = get_cookie_manager()
+read_admin_auth_state(st.session_state, cookie_manager)
 
 # --- Phần Login ---
 st.title("🔑 Trang Quản Trị Tiệm Sữa Hạt")
@@ -36,7 +43,7 @@ if not st.session_state.admin_logged_in:
             st.error(f"Không thể đọc bảng QuanTriVien: {e}")
 
         if valid_login:
-            st.session_state.admin_logged_in = True
+            save_admin_auth_state(st.session_state, cookie_manager, username)
             st.rerun()
         else:
             st.error("Sai tên đăng nhập hoặc mật khẩu!")
@@ -44,15 +51,16 @@ if not st.session_state.admin_logged_in:
 
 # SAU KHI ĐĂNG NHẬP XONG SẼ VÀO TRANG QUẢN TRỊ
 
+admin_display_name = st.session_state.get("admin_username", "Admin") or "Admin"
 # Nút đăng xuất ở sidebar
-st.sidebar.header("Xin chào Hiền Chi ! Ba chúc em thật đắt hàng! 🎉")
+st.sidebar.header(f"Xin chào {admin_display_name}! Ba chúc em thật đắt hàng! 🎉")
 st.sidebar.info("Lưu ý: Chỉ Admin mới có quyền truy cập trang này.", icon="ℹ️")
 st.sidebar.info("Hôm nay là ngày: " + datetime.now(pytz.timezone('Asia/Ho_Chi_Minh')).strftime("%d/%m/%Y %H:%M:%S") , icon="📅")
 st.sidebar.markdown("---")
 
 
 if st.sidebar.button("Đăng xuất"):
-    st.session_state.admin_logged_in = False
+    clear_admin_auth_state(st.session_state, cookie_manager)
     st.rerun()
 
 
