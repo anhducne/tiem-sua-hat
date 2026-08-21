@@ -16,8 +16,7 @@ def get_spreadsheet():
         # Lấy creds từ secrets (khi deploy) hoặc file json (khi chạy local)
         if "google_credentials" in st.secrets:
             creds_dict = json.loads(st.secrets["google_credentials"])
-            # gc = gspread.service_account_from_dict(creds_dict) 
-            gc = cfg.gc
+            gc = gspread.service_account_from_dict(creds_dict) 
         else:
             # gc = gspread.service_account(filename="milkshop-506107-19ac...json") # Thay tên file json thực tế của bạn
             gc = cfg.gc
