@@ -7,7 +7,6 @@ import config as cfg
 
 
 # KẾT NỐI TớI BẢNG SHEETS
-gc = gspread.service_account(filename='C:/Users/Bee/Desktop/ShopMilkPy/milkshop-506107-19ac8c82c7b0.json')
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1XD3D4Gs3SI9aQB1aWfgZ_5wHsqNpjswDv_4EfTc708I/edit?usp=sharing"
 
 @st.cache_resource
@@ -19,7 +18,7 @@ def get_spreadsheet():
             gc = gspread.service_account_from_dict(creds_dict) 
         else:
             # gc = gspread.service_account(filename="milkshop-506107-19ac...json") # Thay tên file json thực tế của bạn
-            gc = cfg.gc
+            gc = gspread.service_account(filename='C:/Users/Bee/Desktop/ShopMilkPy/milkshop-506107-19ac8c82c7b0.json')
         
         # Sửa link Google Sheets của bạn ở đây
         SHEET_URL = cfg.SHEET_URL
@@ -46,6 +45,3 @@ def get_sheet_data(sheet_name):
 def clear_sheet_data_cache():
     get_sheet_data.clear()
 
-# dành cho món ăn 
-# monan_sheet = sh.worksheet("MonAn")
-# list_mon_an = [row["TenMon"] for row in monan_sheet.get_all_records() if row.get("TenMon")]
