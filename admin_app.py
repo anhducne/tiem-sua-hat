@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 import json
 import re
+import unicodedata
 from datetime import datetime, timedelta
 import pytz
 import config as cfg
@@ -12,6 +13,12 @@ def is_locked_account_status(value):
     normalized_value = str(value or "").strip().lower()
     normalized_value = normalized_value.replace("đ", "d").replace("á", "a").replace("ó", "o")
     return normalized_value in {"1", "true", "yes", "khoa", "bi khoa", "da khoa"}
+
+
+def is_old_order_status(value):
+    normalized_value = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    normalized_value = "".join(char for char in normalized_value if not unicodedata.combining(char))
+    return normalized_value in {"1", "true", "yes", "cu", "don cu", "doncu"}
 
 
 def format_admin_order_items(value, week_start=None):
@@ -219,6 +226,10 @@ with tab2:
             cfg.clear_sheet_data_cache()
 
         orders, nguoidung_rows, thuchi_rows = load_admin_order_cache()
+        new_orders = [
+            order for order in orders
+            if not is_old_order_status(order.get("doncu", "0"))
+        ]
 
         def normalize_header_name(value):
             return str(value or "").strip().lower()
@@ -327,7 +338,7 @@ with tab2:
                 st.markdown("Chọn những đơn cần xác nhận, sau đó bấm **Lưu xác nhận**.")
                 with st.form("form_batch_confirm_orders"):
                     selected_states = {}
-                    for order in orders:
+                    for order in new_orders:
                         order_code = str(get_field_value(order, "maOrder", "MaOrder", "mã đơn")).strip()
                         if not order_code:
                             continue
@@ -466,7 +477,11 @@ with tab2:
             current_week_orders = []
             for order in orders:
                 order_date = get_order_date(order)
-                if order_date is not None and week_start <= order_date <= week_end:
+                if (
+                    not is_old_order_status(order.get("doncu", "0"))
+                    and order_date is not None
+                    and week_start <= order_date <= week_end
+                ):
                     current_week_orders.append(order)
 
             total_week_orders = len(current_week_orders)
@@ -535,11 +550,32 @@ with tab2:
                 "Chỉnh sửa cuối",
                 "Trạng thái Tài khoản",
             ]
-            st.dataframe(pd.DataFrame(display_orders)[column_order], use_container_width=True)
+            new_order_rows = [
+                row for order, row in zip(orders, display_orders)
+                if not is_old_order_status(order.get("doncu", "0"))
+            ]
+            old_order_rows = [
+                row for order, row in zip(orders, display_orders)
+                if is_old_order_status(order.get("doncu", "0"))
+            ]
+
+            st.dataframe(pd.DataFrame(new_order_rows, columns=column_order), use_container_width=True)
+            with st.expander("📚 Lịch sử đơn đã đặt"):
+                if old_order_rows:
+                    st.dataframe(
+                        pd.DataFrame(old_order_rows, columns=column_order),
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("Chưa có đơn cũ nào.")
+
+            if not new_orders:
+                st.info("Hiện không có đơn mới để thao tác.")
+                st.stop()
 
             order_options = []
             order_map = {}
-            for order in orders:
+            for order in new_orders:
                 order_code = str(get_field_value(order, "maOrder", "MaOrder", "mã đơn")).strip()
                 phone = str(get_field_value(order, "dienthoai", "DienThoai", "SĐT")).strip()
                 customer_name = str(get_field_value(order, "tennguoidung", "TenNguoiDung", "Tên người dùng")).strip()

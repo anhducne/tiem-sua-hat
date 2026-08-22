@@ -75,6 +75,11 @@ def is_account_locked(value):
     return normalized_value in {"1", "true", "yes", "khoa", "bikhoa", "dakhoa"}
 
 
+def is_old_order(value):
+    normalized_value = normalize_column_name(value)
+    return normalized_value in {"1", "true", "yes", "cu", "doncu"}
+
+
 def build_order_items(selected_dates, menu_by_date):
     return " | ".join(
         f"{menu_by_date[menu_date]['day']} ({menu_date.strftime('%d/%m/%Y')}) - {menu_by_date[menu_date]['food']}"
@@ -555,7 +560,21 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         ["trangthai"],
                         "Chờ xác nhận",
                     ),
+                    "doncu": 0,
                 }
+                doncu_column = next(
+                    (index for index, header in enumerate(headers)
+                     if normalize_column_name(header) == "doncu"),
+                    None,
+                )
+                if doncu_column is None:
+                    st.error("DonHang cần có cột doncu để phân biệt đơn mới và đơn cũ.")
+                    st.stop()
+
+                if existing_order is None:
+                    for old_order in customer_orders:
+                        old_row_number = old_order["row_number"]
+                        donhang_sheet.update_cell(old_row_number, doncu_column + 1, 1)
                 if existing_order:
                     row_number = existing_order["row_number"]
                     for index, header in enumerate(headers):
