@@ -168,9 +168,27 @@ def parse_prices(value):
 # Giao diện web
 logo_path = Path(__file__).parent / "123logo.png"
 bank_image_path = Path(__file__).parent / "bank.jpg"
+st.markdown(
+    """
+    <style>
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+    }
+    div[data-testid="stImage"] img {
+        display: block;
+        margin: 0 auto;
+    }
+    h1 {
+        text-align: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.image(str(logo_path), width=100)
-st.image("https://i.pinimg.com/1200x/87/cd/08/87cd08e9dc0445dcef62d4d32b7b195d.jpg", width=200)
-st.title("🥛 Tiệm Sữa Hạt Cô Hiền Chi 🍦")
+st.markdown("<h1>🥛 Tiệm Sữa Hạt Hiền Chi 🍦</h1>", unsafe_allow_html=True)
+st.image("https://i.pinimg.com/1200x/87/cd/08/87cd08e9dc0445dcef62d4d32b7b195d.jpg",caption="lợi ích của hạt" , width=320)
 if not st.session_state.get("checked_phone") and not st.session_state.get("order_submitted"):
     st.write("Vui lòng nhập số điện thoại để kiểm tra hoặc tạo order")
 

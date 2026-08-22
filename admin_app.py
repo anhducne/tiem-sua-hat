@@ -94,6 +94,56 @@ if "admin_username" not in st.session_state:
 cookie_manager = get_cookie_manager()
 read_admin_auth_state(st.session_state, cookie_manager)
 
+st.markdown(
+    """
+    <style>
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+    }
+    div[data-testid="stImage"] img {
+        display: block;
+        margin: 0 auto;
+    }
+    .admin-login-box {
+        max-width: 520px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 1.2rem 1rem 0.5rem;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.02);
+    }
+    .admin-login-box .stTextInput > div,
+    .admin-login-box .stTextInput input,
+    .admin-login-box button {
+        width: 100%;
+    }
+    .admin-login-box .stTextInput input {
+        border-radius: 12px;
+        min-height: 48px;
+    }
+    .admin-login-title {
+        text-align: center;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.2rem 0 0.8rem;
+    }
+    .admin-login-subtitle {
+        text-align: center;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 1rem;
+    }
+    .centered-form {
+        display: flex;
+        justify-content: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # --- Phần Login ---
 st.title("🔑 Trang Quản Trị Tiệm Sữa Hạt")
 sh = cfg.get_spreadsheet()
@@ -101,10 +151,14 @@ if not sh:
     st.stop()
 
 if not st.session_state.admin_logged_in:
-    st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=400)
-    username = st.text_input("Tên đăng nhập:")
-    password = st.text_input("Mật khẩu:", type="password")
-    if st.button("Đăng nhập", type="primary", use_container_width=True):
+    left_col, center_col, right_col = st.columns([1, 1.2, 1])
+    with center_col:
+        st.markdown('<div class="admin-login-box">', unsafe_allow_html=True)
+        st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=360)
+        st.markdown('<div class="admin-login-subtitle">Quản trị viên</div>', unsafe_allow_html=True)
+        username = st.text_input("Tên đăng nhập:", placeholder="Nhập tên đăng nhập", label_visibility="collapsed")
+        password = st.text_input("Mật khẩu:", type="password", placeholder="Nhập mật khẩu", label_visibility="collapsed")
+        if st.button("Đăng nhập", type="primary", use_container_width=True):
         try:
             @st.cache_data(ttl=300)
             def load_admin_rows():
@@ -126,6 +180,7 @@ if not st.session_state.admin_logged_in:
             st.rerun()
         else:
             st.error("Sai tên đăng nhập hoặc mật khẩu!")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop() # Dừng lại nếu chưa đăng nhập thành công
 
 # SAU KHI ĐĂNG NHẬP XONG SẼ VÀO TRANG QUẢN TRỊ
