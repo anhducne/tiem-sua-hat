@@ -20,6 +20,15 @@ def parse_date(value):
     return None
 
 
+def get_order_week_start(current_time):
+    week_start = current_time.date() - timedelta(days=current_time.weekday())
+    if current_time.weekday() == 5 and current_time.hour >= 12:
+        week_start += timedelta(days=7)
+    elif current_time.weekday() == 6:
+        week_start += timedelta(days=7)
+    return week_start
+
+
 def find_column(headers, names):
     for name in names:
         if name in headers:
@@ -115,9 +124,30 @@ if st.session_state.get("order_submitted"):
 tz_vn = pytz.timezone("Asia/Ho_Chi_Minh")
 now = datetime.now(tz_vn)
 today = now.date()
-start_of_week = today - timedelta(days=today.weekday())
+start_of_week = get_order_week_start(now)
 week_dates = [start_of_week + timedelta(days=day) for day in range(7)]
 day_names = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+
+st.markdown(
+    """
+    <style>
+    .order-intro, .order-day, .order-day * {
+        font-size: 1.12rem;
+    }
+    .order-day {
+        padding: 0.8rem 0.2rem;
+    }
+    .order-day-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+    .stCheckbox label, .stRadio label {
+        font-size: 1.12rem !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 try:
     workbook = cfg.get_spreadsheet()
@@ -319,12 +349,10 @@ if st.session_state.get("checked_phone") == sdt and sdt:
     if not customer_orders and not st.session_state.get("registration_confirmed", False):
         st.stop()
 
-    st.write("Chọn ngày muốn đăng ký:")
-    header_day, header_product, header_register, header_price = st.columns([1, 3, 1, 2])
-    header_day.markdown("**Thứ / ngày**")
-    header_product.markdown("**Sản phẩm**")
-    header_register.markdown("**Đăng ký**")
-    header_price.markdown("**Mức giá**")
+    st.markdown(
+        f'<div class="order-intro">Order cho tuần {week_dates[0].strftime("%d/%m")} - {week_dates[-1].strftime("%d/%m/%Y")}</div>',
+        unsafe_allow_html=True,
+    )
     existing_order_text = " | ".join(str(order["data"].get("monandadat", "")) for order in customer_orders)
     selected_dates = []
     selected_prices = {}
@@ -336,32 +364,32 @@ if st.session_state.get("checked_phone") == sdt and sdt:
         disabled = menu["locked"] or menu["food"] == "-- Không bán --"
         day_label = menu["day"]
         existing_order_for_date = f"{day_label} - {menu['food']}" in existing_order_text
-        day_column, product_column, register_column, price_column = st.columns([1, 3, 1, 2])
-        with day_column:
-            st.markdown(f"**{day_label}**")
-            st.caption(menu_date.strftime("%d/%m/%Y"))
-        with product_column:
+        with st.container(border=True):
+            st.markdown(
+                f'<div class="order-day-title">{day_label} - {menu_date.strftime("%d/%m/%Y")}</div>',
+                unsafe_allow_html=True,
+            )
             if menu["image"]:
-                st.image(menu["image"], width=150)
-            st.write(menu["food"])
+                st.image(menu["image"], width=180)
+            st.markdown(f'<div class="order-day">{menu["food"]}</div>', unsafe_allow_html=True)
             if menu["description"]:
-                st.caption(menu["description"])
-        with register_column:
+                st.markdown(f'<div class="order-day">{menu["description"]}</div>', unsafe_allow_html=True)
+
             checked = st.checkbox(
-                "Đăng ký",
+                "Chọn ngày này",
                 value=existing_order_for_date,
                 disabled=disabled,
                 key=f"order_day_{menu_date.isoformat()}",
             )
             if menu["locked"]:
-                st.caption("Đã khóa")
+                st.caption("Ngày này đã khóa")
             if checked:
                 selected_dates.append(menu_date)
-        with price_column:
+
             price_labels = [f"{label}đ" for label, _ in menu["prices"]]
             if price_labels:
                 selected_price = st.radio(
-                    "",
+                    "Chọn mức giá",
                     price_labels,
                     index=None,
                     disabled=not checked,
