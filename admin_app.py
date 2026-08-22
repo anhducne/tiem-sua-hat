@@ -567,7 +567,7 @@ with tab2:
 
             current_week_orders = new_orders
             today_orders = [
-                order for order in current_week_orders
+                order for order in orders
                 if today in get_order_item_dates(order.get("monandadat", ""), week_start.year)
             ]
 
@@ -607,17 +607,6 @@ with tab2:
                 st.dataframe(pd.DataFrame(today_order_rows), use_container_width=True, hide_index=True)
             else:
                 st.caption("Chưa có người đặt đồ cần trả trong ngày hôm nay.")
-
-            with st.expander("💰 Thu chi"):
-                st.success(
-                    f"**Tổng số tiền thu được trong 1 tháng (4 tuần):** {format_money(month_revenue_total)}"
-                )
-                st.markdown(
-                    f"**Tổng số tiền phải thu trong tuần:** {format_money(total_due)}\n"
-                )
-                st.markdown(
-                    f"**Tổng số tiền đã có trong tuần:** {format_money(total_collected)}"
-                )
 
             st.markdown(
                 f"**Tổng số đơn của tuần ({week_start.strftime('%d/%m/%Y')} đến {week_end.strftime('%d/%m/%Y')}):** {total_week_orders} đơn\n"
@@ -681,6 +670,17 @@ with tab2:
                         st.rerun()
                 else:
                     st.info("Chưa có đơn cũ nào.")
+
+            with st.expander("💰 Thu chi"):
+                st.success(
+                    f"**Tổng số tiền thu được trong 1 tháng (4 tuần):** {format_money(month_revenue_total)}"
+                )
+                st.markdown(
+                    f"**Tổng số tiền phải thu trong tuần:** {format_money(total_due)}\n"
+                )
+                st.markdown(
+                    f"**Tổng số tiền đã có trong tuần:** {format_money(total_collected)}"
+                )
 
             if not new_orders:
                 st.info("Hiện không có đơn mới để thao tác.")
