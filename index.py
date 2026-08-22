@@ -403,51 +403,64 @@ if st.session_state.get("checked_phone") == sdt and sdt:
         st.success(f"Mã order: {order_code}")
         history_items = []
         seen_history_items = set()
+        current_order_details = []
+        history_order_details = []
         for order in customer_orders:
-            _, order_history_items = split_current_and_history_items(
+            order_current_items, order_history_items = split_current_and_history_items(
                 get_normalized_value(order["data"], ["monandadat"], ""),
                 week_dates,
             )
+            if order_current_items:
+                current_order_details.append((order["data"], order_current_items))
+            if order_history_items:
+                history_order_details.append((order["data"], order_history_items))
             for item in order_history_items:
                 if item not in seen_history_items:
                     history_items.append(item)
                     seen_history_items.add(item)
 
         with st.expander("Lịch sử đặt món"):
-            if history_items:
-                for item in history_items:
-                    st.markdown(f"- {item}")
+            if history_order_details:
+                for history_order, order_history_items in history_order_details:
+                    st.markdown(f"**Mã order:** {get_value(history_order, ['maOrder'], 'Không rõ')}")
+                    st.table({
+                        "Món đã đặt": "\n".join(order_history_items),
+                        "Thời gian chỉnh sửa": get_normalized_value(
+                            history_order, ["thoigianchinhsuacuoi"]
+                        ),
+                        "Tổng số tiền": get_normalized_value(
+                            history_order, ["tongsotien"]
+                        ),
+                        "Trạng thái thanh toán": get_normalized_value(
+                            saved_user, ["thanhToanTien"], "Chưa thanh toán"
+                        ),
+                    })
             else:
                 st.caption("Chưa có lịch sử")
 
         with st.expander("Xem chi tiết order"):
-            for order in customer_orders:
-                order_data = order["data"]
-                detail_order = {
-                    "Thời gian chỉnh sửa": get_normalized_value(
-                        order_data, ["thoigianchinhsuacuoi"]
-                    ),
-                    "Tổng số tiền": get_normalized_value(
-                        order_data, ["tongsotien"]
-                    ),
-                    "Trạng thái thanh toán": get_normalized_value(
-                        saved_user, ["thanhToanTien"], "Chưa thanh toán"
-                    ),
-                    "Trạng thái tài khoản": "Đã khóa" if is_account_locked(
-                        get_normalized_value(saved_user, ["trangthaitaikhoan"], "0")
-                    ) else "Không bị khóa",
-                }
-                st.table(detail_order)
-                current_items, history_items = split_current_and_history_items(
-                    get_normalized_value(order_data, ["monandadat"], ""),
-                    week_dates,
-                )
-                st.markdown("**Món đã đặt trong tuần này**")
-                if current_items:
+            if current_order_details:
+                for order_data, current_items in current_order_details:
+                    detail_order = {
+                        "Thời gian chỉnh sửa": get_normalized_value(
+                            order_data, ["thoigianchinhsuacuoi"]
+                        ),
+                        "Tổng số tiền": get_normalized_value(
+                            order_data, ["tongsotien"]
+                        ),
+                        "Trạng thái thanh toán": get_normalized_value(
+                            saved_user, ["thanhToanTien"], "Chưa thanh toán"
+                        ),
+                        "Trạng thái tài khoản": "Đã khóa" if is_account_locked(
+                            get_normalized_value(saved_user, ["trangthaitaikhoan"], "0")
+                        ) else "Không bị khóa",
+                    }
+                    st.table(detail_order)
+                    st.markdown("**Món đã đặt trong tuần này**")
                     for item in current_items:
                         st.markdown(f"- {item}")
-                else:
-                    st.caption("Chưa có món cho tuần này")
+            else:
+                st.caption("Chưa có món cho tuần này")
     else:
         registration_confirmed = st.session_state.get("registration_confirmed", False)
         if not registration_confirmed:
