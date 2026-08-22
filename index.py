@@ -194,6 +194,14 @@ st.markdown(
     }
     .order-day {
         padding: 0.8rem 0.2rem;
+        color: #52636b;
+        font-size: 1rem;
+    }
+    .order-product {
+        padding: 0.55rem 0.2rem;
+        color: #075766;
+        font-size: 1.35rem;
+        font-weight: 800;
     }
     .order-day-title {
         font-size: 1.25rem;
@@ -415,16 +423,13 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     get_normalized_value(order_data, ["monandadat"], ""),
                     week_dates,
                 )
-                current_column, history_column = st.columns(2)
-                with current_column:
-                    st.markdown("**Món đã đặt**")
-                    if current_items:
-                        for item in current_items:
-                            st.markdown(f"- {item}")
-                    else:
-                        st.caption("Chưa có món cho tuần này")
-                with history_column:
-                    st.markdown("**Lịch sử đặt món**")
+                st.markdown("**Món đã đặt trong tuần này**")
+                if current_items:
+                    for item in current_items:
+                        st.markdown(f"- {item}")
+                else:
+                    st.caption("Chưa có món cho tuần này")
+                with st.expander("Lịch sử đặt món"):
                     if history_items:
                         for item in history_items:
                             st.markdown(f"- {item}")
@@ -503,8 +508,8 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 unsafe_allow_html=True,
             )
             if menu["image"]:
-                st.image(menu["image"], width=180)
-            st.markdown(f'<div class="order-day">{menu["food"]}</div>', unsafe_allow_html=True)
+                st.image(menu["image"], width=210)
+            st.markdown(f'<div class="order-product">{menu["food"]}</div>', unsafe_allow_html=True)
             if menu["description"]:
                 st.markdown(f'<div class="order-day">{menu["description"]}</div>', unsafe_allow_html=True)
 
