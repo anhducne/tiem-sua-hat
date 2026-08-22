@@ -17,6 +17,7 @@ def is_locked_account_status(value):
 
 def is_old_order_status(value):
     normalized_value = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    normalized_value = normalized_value.replace("đ", "d")
     normalized_value = "".join(char for char in normalized_value if not unicodedata.combining(char))
     return normalized_value in {"1", "true", "yes", "cu", "don cu", "doncu"}
 
@@ -226,10 +227,6 @@ with tab2:
             cfg.clear_sheet_data_cache()
 
         orders, nguoidung_rows, thuchi_rows = load_admin_order_cache()
-        new_orders = [
-            order for order in orders
-            if not is_old_order_status(order.get("doncu", "0"))
-        ]
 
         def normalize_header_name(value):
             return str(value or "").strip().lower()
@@ -443,6 +440,9 @@ with tab2:
                         return parsed.date()
                 return None
 
+            def get_last_modified_date(order):
+                return parse_datetime_value(order.get("thoigianchinhsuacuoi"))
+
             def get_order_day_labels(order):
                 raw_value = str(order.get("monandadat", "") or "")
                 if raw_value.strip():
@@ -474,15 +474,34 @@ with tab2:
             week_start = get_admin_order_week_start(now_vn)
             week_end = week_start + timedelta(days=6)
 
-            current_week_orders = []
-            for order in orders:
-                order_date = get_order_date(order)
-                if (
-                    not is_old_order_status(order.get("doncu", "0"))
-                    and order_date is not None
-                    and week_start <= order_date <= week_end
-                ):
-                    current_week_orders.append(order)
+            donhang_headers = donhang_sheet.row_values(1)
+            doncu_column = next(
+                (
+                    index for index, header in enumerate(donhang_headers, start=1)
+                    if normalize_header_name(header) == "doncu"
+                ),
+                None,
+            )
+            if doncu_column is None:
+                st.error("Sheet DonHang cần có cột doncu để phân biệt đơn mới và đơn cũ.")
+                st.stop()
+
+            new_orders = []
+            old_orders = []
+            for row_number, order in enumerate(orders, start=2):
+                modified_datetime = get_last_modified_date(order)
+                order_date = modified_datetime.date() if modified_datetime is not None else None
+                is_new_order = order_date is not None and week_start <= order_date <= week_end
+                expected_doncu = "Đơn mới" if is_new_order else "Đơn cũ"
+                if str(order.get("doncu", "")).strip() != str(expected_doncu):
+                    donhang_sheet.update_cell(row_number, doncu_column, expected_doncu)
+                    order["doncu"] = expected_doncu
+                if is_new_order:
+                    new_orders.append(order)
+                else:
+                    old_orders.append(order)
+
+            current_week_orders = new_orders
 
             total_week_orders = len(current_week_orders)
             total_due = sum(parse_money(order.get("tongsotien")) for order in current_week_orders)
@@ -595,7 +614,7 @@ with tab2:
                 key="order_selector",
             )
             st.session_state["selected_order_code"] = selected_label
-            selected_order = order_map.get(selected_label, orders[0])
+            selected_order = order_map.get(selected_label, new_orders[0])
 
             st.subheader("📄 Chi tiết đơn hàng")
             with st.container(border=True):

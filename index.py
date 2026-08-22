@@ -38,6 +38,7 @@ def find_column(headers, names):
 
 def normalize_column_name(value):
     normalized = unicodedata.normalize("NFKD", str(value))
+    normalized = normalized.replace("đ", "d").replace("Đ", "D")
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
     return re.sub(r"[^a-z0-9]", "", normalized.lower())
 
@@ -560,7 +561,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         ["trangthai"],
                         "Chờ xác nhận",
                     ),
-                    "doncu": 0,
+                    "doncu": "Đơn mới",
                 }
                 doncu_column = next(
                     (index for index, header in enumerate(headers)
@@ -574,7 +575,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 if existing_order is None:
                     for old_order in customer_orders:
                         old_row_number = old_order["row_number"]
-                        donhang_sheet.update_cell(old_row_number, doncu_column + 1, 1)
+                        donhang_sheet.update_cell(old_row_number, doncu_column + 1, "Đơn cũ")
                 if existing_order:
                     row_number = existing_order["row_number"]
                     for index, header in enumerate(headers):
