@@ -185,7 +185,7 @@ st.markdown(
     h1 {
         text-align: center;
         margin: 0.3rem 0 0.8rem;
-        font-size: clamp(1.2rem, 2.5vw, 2.2rem);
+        font-size: clamp(1.2rem, 2.0vw, 2.2rem);
         line-height: 0.8;
     }
     .logo-header {
@@ -198,7 +198,7 @@ st.markdown(
 )
 
 st.image(str(logo_path), width=420, use_container_width=False)
-st.markdown("<h1>Order Sữa ạt</h1>", unsafe_allow_html=True)
+st.markdown("<h1>Order Sữa Hạt</h1>", unsafe_allow_html=True)
 if not st.session_state.get("checked_phone") and not st.session_state.get("order_submitted"):
     st.write("Vui lòng nhập số điện thoại để kiểm tra hoặc tạo order")
 
