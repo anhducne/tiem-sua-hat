@@ -193,14 +193,18 @@ st.markdown(
         font-size: 1.12rem;
     }
     .order-day {
-        padding: 0.8rem 0.2rem;
-        color: #52636b;
-        font-size: 1rem;
+        padding: 0.7rem 0.8rem;
+        color: #ffffff;
+        background: #315b63;
+        border-radius: 0.45rem;
+        font-size: 1.15rem;
     }
     .order-product {
-        padding: 0.55rem 0.2rem;
-        color: #075766;
-        font-size: 1.35rem;
+        padding: 0.75rem 0.8rem;
+        color: #ffffff;
+        background: #164e5a;
+        border-radius: 0.45rem;
+        font-size: 1.55rem;
         font-weight: 800;
     }
     .order-day-title {
