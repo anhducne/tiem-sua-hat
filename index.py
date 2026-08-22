@@ -401,6 +401,25 @@ if st.session_state.get("checked_phone") == sdt and sdt:
         )
         st.success(f"Xin chào bạn: {customer_name} - Số điện thoại: {sdt}")
         st.success(f"Mã order: {order_code}")
+        history_items = []
+        seen_history_items = set()
+        for order in customer_orders:
+            _, order_history_items = split_current_and_history_items(
+                get_normalized_value(order["data"], ["monandadat"], ""),
+                week_dates,
+            )
+            for item in order_history_items:
+                if item not in seen_history_items:
+                    history_items.append(item)
+                    seen_history_items.add(item)
+
+        with st.expander("Lịch sử đặt món"):
+            if history_items:
+                for item in history_items:
+                    st.markdown(f"- {item}")
+            else:
+                st.caption("Chưa có lịch sử")
+
         with st.expander("Xem chi tiết order"):
             for order in customer_orders:
                 order_data = order["data"]
@@ -429,12 +448,6 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         st.markdown(f"- {item}")
                 else:
                     st.caption("Chưa có món cho tuần này")
-                with st.expander("Lịch sử đặt món"):
-                    if history_items:
-                        for item in history_items:
-                            st.markdown(f"- {item}")
-                    else:
-                        st.caption("Chưa có lịch sử")
     else:
         registration_confirmed = st.session_state.get("registration_confirmed", False)
         if not registration_confirmed:
