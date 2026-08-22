@@ -566,6 +566,10 @@ with tab2:
                     old_order_row_numbers.append(row_number)
 
             current_week_orders = new_orders
+            today_orders = [
+                order for order in current_week_orders
+                if today in get_order_item_dates(order.get("monandadat", ""), week_start.year)
+            ]
 
             total_week_orders = len(current_week_orders)
             total_due = sum(parse_money(order.get("tongsotien")) for order in current_week_orders)
@@ -585,17 +589,38 @@ with tab2:
             if month_revenue_total == 0:
                 month_revenue_total = sum(parse_money(order.get("tongsotien")) for order in orders if get_order_date(order) and get_order_date(order).year == current_year and get_order_date(order).month == current_month)
 
-            st.success(
-                f"**Tổng số tiền thu được trong 1 tháng (4 tuần):** {format_money(month_revenue_total)}"
+            st.info(
+                f"**Hôm nay là {date_to_weekday_label(today)} ({today.strftime('%d/%m/%Y')})** - "
+                f"có **{len(today_orders)} đơn** cần trả trong ngày này."
             )
+            today_order_rows = []
+            for order in today_orders:
+                today_order_rows.append({
+                    "Tên": str(get_field_value(order, "tennguoidung", "TenNguoiDung", "Tên người dùng")).strip() or "Không có tên",
+                    "Điện thoại": str(get_field_value(order, "dienthoai", "DienThoai", "SĐT")).strip() or "Không có SĐT",
+                    "Món đã đặt": ", ".join(
+                        item for item in format_admin_order_items(order.get("monandadat", ""), week_start)
+                        if today.strftime("%d/%m") in item
+                    ) or str(order.get("monandadat", "") or "Không rõ"),
+                })
+            if today_order_rows:
+                st.dataframe(pd.DataFrame(today_order_rows), use_container_width=True, hide_index=True)
+            else:
+                st.caption("Chưa có người đặt đồ cần trả trong ngày hôm nay.")
+
+            with st.expander("💰 Thu chi"):
+                st.success(
+                    f"**Tổng số tiền thu được trong 1 tháng (4 tuần):** {format_money(month_revenue_total)}"
+                )
+                st.markdown(
+                    f"**Tổng số tiền phải thu trong tuần:** {format_money(total_due)}\n"
+                )
+                st.markdown(
+                    f"**Tổng số tiền đã có trong tuần:** {format_money(total_collected)}"
+                )
+
             st.markdown(
                 f"**Tổng số đơn của tuần ({week_start.strftime('%d/%m/%Y')} đến {week_end.strftime('%d/%m/%Y')}):** {total_week_orders} đơn\n"
-            )
-            st.markdown(
-                f"**Tổng số tiền phải thu trong tuần:** {format_money(total_due)}\n"
-            )
-            st.markdown(
-                f"**Tổng số tiền đã có trong tuần:** {format_money(total_collected)}"
             )
 
             account_status_map = {}
