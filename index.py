@@ -174,21 +174,81 @@ st.markdown(
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center;
+        align-items: center;
     }
     div[data-testid="stImage"] img {
         display: block;
         margin: 0 auto;
+        max-width: 100%;
+        height: auto;
     }
     h1 {
         text-align: center;
+        margin: 0.3rem 0 0.8rem;
+        font-size: clamp(1.6rem, 2.3vw, 2.7rem);
+        line-height: 1.2;
+    }
+    .header-wrap {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 0.2rem;
+    }
+    .header-inner {
+        width: min(100%, 900px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+    }
+    .header-logo {
+        flex: 0 0 110px;
+        max-width: 110px;
+    }
+    .header-banner {
+        flex: 1 1 620px;
+        max-width: 620px;
+    }
+    @media (max-width: 700px) {
+        .header-inner {
+            gap: 0.4rem;
+        }
+        .header-logo {
+            flex-basis: 70px;
+        }
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
-st.image(str(logo_path), width=100)
-st.markdown("<h1>🥛 Tiệm Sữa Hạt Hiền Chi 🍦</h1>", unsafe_allow_html=True)
-st.image("https://i.pinimg.com/1200x/87/cd/08/87cd08e9dc0445dcef62d4d32b7b195d.jpg",caption="lợi ích của hạt" , width=320)
+
+st.markdown(
+    """
+    <div class="header-wrap">
+        <div class="header-inner">
+            <div class="header-logo">
+                <img src="" alt="logo" />
+            </div>
+            <div class="header-banner">
+                <img src="" alt="banner" />
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+logo_col, banner_col = st.columns([1.0, 4.0], gap="small")
+with logo_col:
+    st.image(str(logo_path), use_container_width=True)
+with banner_col:
+    st.image(
+        "https://i.pinimg.com/1200x/87/cd/08/87cd08e9dc0445dcef62d4d32b7b195d.jpg",
+        use_container_width=True,
+    )
+
+st.markdown("<h1>Order sữa hạt Hchi</h1>", unsafe_allow_html=True)
 if not st.session_state.get("checked_phone") and not st.session_state.get("order_submitted"):
     st.write("Vui lòng nhập số điện thoại để kiểm tra hoặc tạo order")
 

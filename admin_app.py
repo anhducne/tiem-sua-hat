@@ -107,7 +107,6 @@ st.markdown(
     }
     .admin-login-box {
         max-width: 520px;
-        width: 100%;
         margin: 0 auto;
         padding: 1.2rem 1rem 0.5rem;
         border-radius: 18px;
@@ -135,10 +134,6 @@ st.markdown(
         color: #4b5563;
         margin-bottom: 1rem;
     }
-    .centered-form {
-        display: flex;
-        justify-content: center;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -151,14 +146,12 @@ if not sh:
     st.stop()
 
 if not st.session_state.admin_logged_in:
-    left_col, center_col, right_col = st.columns([1, 1.2, 1])
-    with center_col:
-        st.markdown('<div class="admin-login-box">', unsafe_allow_html=True)
-        st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=360)
-        st.markdown('<div class="admin-login-subtitle">Quản trị viên</div>', unsafe_allow_html=True)
-        username = st.text_input("Tên đăng nhập:", placeholder="Nhập tên đăng nhập", label_visibility="collapsed")
-        password = st.text_input("Mật khẩu:", type="password", placeholder="Nhập mật khẩu", label_visibility="collapsed")
-        if st.button("Đăng nhập", type="primary", use_container_width=True):
+    st.markdown('<div class="admin-login-box">', unsafe_allow_html=True)
+    st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=360)
+    st.markdown('<div class="admin-login-subtitle">Quản trị viên</div>', unsafe_allow_html=True)
+    username = st.text_input("Tên đăng nhập:", placeholder="Nhập tên đăng nhập", label_visibility="collapsed")
+    password = st.text_input("Mật khẩu:", type="password", placeholder="Nhập mật khẩu", label_visibility="collapsed")
+    if st.button("Đăng nhập", type="primary", use_container_width=True):
         try:
             @st.cache_data(ttl=300)
             def load_admin_rows():
@@ -180,7 +173,6 @@ if not st.session_state.admin_logged_in:
             st.rerun()
         else:
             st.error("Sai tên đăng nhập hoặc mật khẩu!")
-        st.markdown('</div>', unsafe_allow_html=True)
     st.stop() # Dừng lại nếu chưa đăng nhập thành công
 
 # SAU KHI ĐĂNG NHẬP XONG SẼ VÀO TRANG QUẢN TRỊ
