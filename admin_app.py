@@ -5,6 +5,16 @@ import json
 from datetime import datetime, timedelta
 import pytz
 import config as cfg
+
+
+def is_locked_account_status(value):
+    normalized_value = str(value or "").strip().lower()
+    normalized_value = normalized_value.replace("đ", "d").replace("á", "a").replace("ó", "o")
+    return normalized_value in {"1", "true", "yes", "khoa", "bi khoa", "da khoa"}
+
+
+def format_admin_order_items(value):
+    return [item.strip() for item in str(value or "").split("|") if item.strip()]
 from auth_utils import get_cookie_manager, read_admin_auth_state, save_admin_auth_state, clear_admin_auth_state
 
 # --- BẢO MẬT ĐĂNG NHẬP ---
@@ -339,13 +349,17 @@ with tab2:
                             })
 
                     if order_updates:
-                        donhang_sheet.batch_update(order_updates)
+                        for update in order_updates:
+                            row_number, column_number = gspread.utils.a1_to_rowcol(update["range"])
+                            donhang_sheet.update_cell(row_number, column_number, update["values"][0][0])
                     if user_updates:
-                        nguoidung_sheet.batch_update(user_updates)
+                        for update in user_updates:
+                            row_number, column_number = gspread.utils.a1_to_rowcol(update["range"])
+                            nguoidung_sheet.update_cell(row_number, column_number, update["values"][0][0])
 
                     clear_admin_order_cache()
                     st.session_state["batch_confirm_dialog"] = False
-                    st.success(f"Đã xác nhận {len(selected_codes)} đơn hàng. Hãy bấm làm mới trang thủ công để xem trạng thái mới.")
+                    st.rerun()
 
             _dialog()
 
@@ -520,7 +534,9 @@ with tab2:
                 st.markdown(f"**Mã đơn:** {selected_order.get('maOrder', '')}")
                 st.markdown(f"**Tên người dùng:** {selected_order.get('tennguoidung', '')}")
                 st.markdown(f"**Số điện thoại:** {selected_order.get('dienthoai', '')}")
-                st.markdown(f"**Món ăn đã đặt:** {selected_order.get('monandadat', '')}")
+                st.markdown("**Món ăn đã đặt:**")
+                for order_item in format_admin_order_items(selected_order.get("monandadat", "")):
+                    st.markdown(f"- {order_item}")
                 st.markdown(f"**Tổng số tiền:** {format_money(selected_order.get('tongsotien'))}")
                 st.markdown(f"**Trạng thái:** {selected_order.get('trangthai', '')}")
                 st.markdown(f"**Thời gian chỉnh sửa cuối:** {selected_order.get('thoigianchinhsuacuoi', '')}")
@@ -538,8 +554,8 @@ with tab2:
                         (user for user in nguoidung_rows if str(user.get("maOrder", "")).strip() == str(selected_order.get("maOrder", "")).strip()),
                         None,
                     )
-                    locked_value = str(user_match.get("trangthaitaikhoan", "Hoạt động") if user_match else "Hoạt động").strip().lower()
-                    is_locked = locked_value in {"khoa", "khóa", "bị khóa", "da khoa", "đã khóa"}
+                    locked_value = user_match.get("trangthaitaikhoan", "Hoạt động") if user_match else "Hoạt động"
+                    is_locked = is_locked_account_status(locked_value)
                     current_status = str(selected_order.get("trangthai", "")).strip().lower()
                     is_confirmed = current_status in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"}
 
@@ -550,7 +566,7 @@ with tab2:
                         "",
                         options=account_status_options,
                         index=account_status_options.index(account_status_value),
-                        key="account_status_select",
+                        key=f"account_status_select_{selected_order.get('maOrder', 'unknown')}",
                         label_visibility="collapsed",
                     )
 
@@ -560,7 +576,7 @@ with tab2:
                         "",
                         options=order_status_options,
                         index=0 if not is_confirmed else 1,
-                        key="order_status_select",
+                        key=f"order_status_select_{selected_order.get('maOrder', 'unknown')}",
                         label_visibility="collapsed",
                     )
 
@@ -635,7 +651,7 @@ with tab2:
                                 thuchi_sheet.append_row([today.year, today.month, week_index, week_label, revenue_for_week])
 
                         clear_admin_order_cache()
-                        st.success("Đã lưu trạng thái tài khoản và đơn hàng. Hãy bấm làm mới trang thủ công để xem trạng thái mới.")
+                        st.rerun()
 
             with right_col:
                 st.markdown("### 🧰 Thao tác đơn hàng")

@@ -82,6 +82,10 @@ def build_order_items(selected_dates, menu_by_date):
     )
 
 
+def format_order_items(value):
+    return [item.strip() for item in str(value or "").split("|") if item.strip()]
+
+
 def parse_prices(value):
     prices = []
     raw_value = str(value).strip()
@@ -330,11 +334,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 }
                 st.table(detail_order)
                 st.markdown("**Món đã đặt:**")
-                order_items = [
-                    item.strip() for item in str(
-                        get_normalized_value(order_data, ["monandadat"], "")
-                    ).split("|") if item.strip()
-                ]
+                order_items = format_order_items(get_normalized_value(order_data, ["monandadat"], ""))
                 for item in order_items:
                     st.markdown(f"- {item}")
     else:
