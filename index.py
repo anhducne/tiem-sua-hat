@@ -165,6 +165,24 @@ def parse_prices(value):
     return prices
 
 
+def format_money_display(value):
+    if value in (None, ""):
+        return "0đ"
+
+    text = str(value).strip()
+    if not text:
+        return "0đ"
+    if "đ" in text.lower():
+        return text
+
+    try:
+        cleaned = text.replace(".", "").replace(",", "").replace(" ", "")
+        numeric_value = float(cleaned)
+        return f"{numeric_value:,.0f}".replace(",", ".") + "đ"
+    except (TypeError, ValueError):
+        return f"{text}đ"
+
+
 # Giao diện web
 logo_path = Path(__file__).parent / "suahat.jpg"
 bank_image_path = Path(__file__).parent / "bank.jpg"
@@ -208,8 +226,8 @@ if st.session_state.get("order_submitted"):
     st.success(
         f"🎉 Order thành công! Mã order: {order_result['code']}\n\n"
         f"Món đã đặt: {order_result['items']}\n\n"
-        f"Tổng số tiền: {order_result['total']:,}đ\n\n"
-        f"Trạng thái thanh toán tiền: {order_result['payment']}".replace(",", ".")
+        f"Tổng số tiền: {format_money_display(order_result['total'])}\n\n"
+        f"Trạng thái thanh toán tiền: {order_result['payment']}"
     )
     if bank_image_path.exists():
         st.image(str(bank_image_path), caption="Thông tin chuyển khoản", width=320)
@@ -445,8 +463,8 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         "Thời gian chỉnh sửa": get_normalized_value(
                             history_order, ["thoigianchinhsuacuoi"]
                         ),
-                        "Tổng số tiền": get_normalized_value(
-                            history_order, ["tongsotien"]
+                        "Tổng số tiền": format_money_display(
+                            get_normalized_value(history_order, ["tongsotien"])
                         ),
                         "Trạng thái thanh toán": get_normalized_value(
                                 history_order, ["trangthai"], "Chưa thanh toán"
@@ -462,8 +480,8 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         "Thời gian chỉnh sửa": get_normalized_value(
                             order_data, ["thoigianchinhsuacuoi"]
                         ),
-                        "Tổng số tiền": get_normalized_value(
-                            order_data, ["tongsotien"]
+                        "Tổng số tiền": format_money_display(
+                            get_normalized_value(order_data, ["tongsotien"])
                         ),
                         "Trạng thái thanh toán": get_normalized_value(
                             order_data, ["trangthai"], "Chưa thanh toán"
@@ -676,7 +694,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 else:
                     st.success(f"🎉 Order của bạn đã được ghi nhận thành công! Mã order: {order_code}")
                 st.write(f"**Món đã đặt:** {order_items}")
-                st.write(f"**Tổng số tiền:** {total_price:,.0f}đ".replace(",", "."))
+                st.write(f"**Tổng số tiền:** {format_money_display(total_price)}")
                 st.session_state.order_submitted = True
                 st.session_state.order_result = {
                     "code": order_code,
