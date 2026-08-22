@@ -570,25 +570,25 @@ with tab2:
                 order_status = str(order.get("trangthai", "") or "").strip()
                 registered_date = get_order_date(order)
                 display_orders.append({
-                    "Mã Order": order_code or "UNKNOWN",
-                    "Xác nhận đơn": "Đã xác nhận" if order_status.lower() in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"} else "Chưa xác nhận",
                     "Điện thoại": phone or "Không có SĐT",
                     "Tên": customer_name or "Không có tên",
                     "Ngày đăng ký": get_order_day_labels(order),
+                    "Xác nhận đơn": "Đã xác nhận" if order_status.lower() in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"} else "Chưa xác nhận",
                     "Tiền": format_money(order.get("tongsotien")),
                     "Chỉnh sửa cuối": str(order.get("thoigianchinhsuacuoi", "") or ""),
                     "Trạng thái Tài khoản": account_status_map.get(order_code, "Hoạt động"),
+                    "Mã Order": order_code or "UNKNOWN",
                 })
 
             column_order = [
-                "Mã Order",
-                "Xác nhận đơn",
                 "Điện thoại",
                 "Tên",
                 "Ngày đăng ký",
+                "Xác nhận đơn",
                 "Tiền",
                 "Chỉnh sửa cuối",
                 "Trạng thái Tài khoản",
+                "Mã Order",
             ]
             new_order_rows = [
                 row for order, row in zip(orders, display_orders)
