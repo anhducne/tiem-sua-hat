@@ -207,6 +207,35 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.markdown(
+    """
+    <style>
+    div.stButton > button, div.stFormSubmitButton > button {
+        width: 100%;
+        min-height: 3rem;
+        border-radius: 0.6rem;
+        font-size: 1.08rem;
+        font-weight: 700;
+        border: 1px solid #147d92;
+        background: #e4f6f8;
+        color: #075766;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
+        background: #bdeaf0;
+        color: #064653;
+        transform: translateY(-1px);
+    }
+    div.stButton > button[kind="primary"], div.stFormSubmitButton > button[kind="primary"] {
+        background: #0f8b8d;
+        border-color: #0f8b8d;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 try:
     workbook = cfg.get_spreadsheet()
     _, menu_rows = cfg.get_sheet_data("MenuTuan")
@@ -270,7 +299,7 @@ if has_verified_order:
 
 check_clicked = False
 if not has_verified_order and not has_checked_phone:
-    check_clicked = st.button("Kiểm tra")
+    check_clicked = st.button("Kiểm tra", type="primary", use_container_width=True)
     st.page_link("pages/quan_tri.py", label="Quản trị", icon="🔐")
 
 if not has_verified_order and not has_checked_phone and check_clicked:
@@ -409,7 +438,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 st.info("Tài khoản đã tồn tại nhưng chưa có order. Bạn có thể chọn ngày bên dưới.")
             if not ten:
                 st.warning("Vui lòng nhập tên khách hàng.")
-            if st.button("Đăng ký") and ten:
+            if st.button("Đăng ký", type="primary", use_container_width=True) and ten:
                 try:
                     user_sheet = workbook.worksheet("NguoiDung")
                     user_values, user_rows = cfg.get_sheet_data("NguoiDung")
@@ -507,7 +536,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 st.caption("Chưa có giá")
         st.divider()
 
-    if st.button("Order"):
+    if st.button("Order", type="primary", use_container_width=True):
         if not selected_dates:
             st.warning("Vui lòng chọn ít nhất một ngày để order.")
         elif not customer_orders and not ten:

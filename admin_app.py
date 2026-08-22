@@ -91,7 +91,7 @@ if not st.session_state.admin_logged_in:
     st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=400)
     username = st.text_input("Tên đăng nhập:")
     password = st.text_input("Mật khẩu:", type="password")
-    if st.button("Đăng nhập"):
+    if st.button("Đăng nhập", type="primary", use_container_width=True):
         try:
             @st.cache_data(ttl=300)
             def load_admin_rows():
@@ -122,6 +122,35 @@ st.sidebar.header(f"Xin chào {admin_display_name}! Ba chúc em thật đắt h�
 st.sidebar.info("Lưu ý: Chỉ Admin mới có quyền truy cập trang này.", icon="ℹ️")
 st.sidebar.info("Hôm nay là ngày: " + datetime.now(pytz.timezone('Asia/Ho_Chi_Minh')).strftime("%d/%m/%Y %H:%M:%S") , icon="📅")
 st.sidebar.markdown("---")
+
+st.markdown(
+    """
+    <style>
+    div.stButton > button, div.stFormSubmitButton > button {
+        width: 100%;
+        min-height: 3rem;
+        border-radius: 0.6rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        border: 1px solid #2764a5;
+        background: #e8f1fb;
+        color: #174b83;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
+        background: #cfe2f7;
+        color: #123d6b;
+        transform: translateY(-1px);
+    }
+    div.stButton > button[kind="primary"], div.stFormSubmitButton > button[kind="primary"] {
+        background: #18794e;
+        border-color: #18794e;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 if st.sidebar.button("Đăng xuất"):
@@ -203,7 +232,7 @@ with tab1:
             
             menu_updates.append([thu, date_obj.strftime('%d/%m/%Y'), mon_selected, status])
             st.divider()
-        if st.form_submit_button("💾 Lưu Cấu Hình Menu Tuần"):
+        if st.form_submit_button("💾 Lưu Cấu Hình Menu Tuần", type="primary"):
             try:
                 if order_sheet is None:
                     st.error("Chưa có tab 'MenuTuan' trên Sheets.")
@@ -366,7 +395,7 @@ with tab2:
                         )
                         selected_states[order_code] = checked
 
-                    save_batch = st.form_submit_button("💾 Lưu xác nhận", use_container_width=True)
+                    save_batch = st.form_submit_button("💾 Lưu xác nhận", type="primary", use_container_width=True)
                     cancel_batch = st.form_submit_button("❌ Hủy", use_container_width=True)
 
                 if cancel_batch:
@@ -606,7 +635,7 @@ with tab2:
                         pd.DataFrame(old_order_rows, columns=column_order),
                         use_container_width=True,
                     )
-                    if st.button("🗑️ Xóa toàn bộ đơn cũ", type="secondary"):
+                    if st.button("🗑️ Xóa toàn bộ đơn cũ", type="secondary", use_container_width=True):
                         for row_number in sorted(old_order_row_numbers, reverse=True):
                             donhang_sheet.delete_rows(row_number)
                         clear_admin_order_cache()
@@ -697,7 +726,7 @@ with tab2:
                         label_visibility="collapsed",
                     )
 
-                    if st.button("💾 Lưu", use_container_width=True):
+                    if st.button("💾 Lưu", type="primary", use_container_width=True):
                         account_status = selected_account_status
                         new_status = selected_order_status
 
@@ -788,7 +817,7 @@ with tab2:
                             st.session_state["editing_order_code"] = str(selected_order.get("maOrder", "")).strip()
                             st.rerun()
                     with action_row[2]:
-                        if st.button("✅ Chọn đơn để xác nhận", use_container_width=True):
+                        if st.button("✅ Chọn đơn để xác nhận", type="primary", use_container_width=True):
                             st.session_state["batch_confirm_dialog"] = True
                             st.rerun()
     except Exception as e:
@@ -893,7 +922,7 @@ with tab3:
                 mota_mon = st.text_area("Mô tả:")
                 link_anh = st.text_input("Link hình ảnh (URL):")
 
-                if st.form_submit_button("Thêm Món"):
+                if st.form_submit_button("Thêm Món", type="primary"):
                     if ten_mon_moi:
                         monan_sheet.append_row([ten_mon_moi, link_anh, mota_mon])
                         st.success("Đã thêm món mới thành công!")
