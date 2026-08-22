@@ -81,6 +81,13 @@ def is_old_order(value):
     return normalized_value in {"1", "true", "yes", "cu", "doncu"}
 
 
+def normalize_payment_status(value):
+    normalized_value = normalize_column_name(value)
+    if normalized_value in {"dathanhtoan", "thanhtoan", "paid"}:
+        return "Đã thanh toán"
+    return "Chưa thanh toán"
+
+
 def build_order_items(selected_dates, menu_by_date):
     return " | ".join(
         f"{menu_by_date[menu_date]['day']} ({menu_date.strftime('%d/%m/%Y')}) - {menu_by_date[menu_date]['food']}"
@@ -195,14 +202,12 @@ st.markdown(
     .order-day {
         padding: 0.7rem 0.8rem;
         color: #ffffff;
-        background: #315b63;
         border-radius: 0.45rem;
         font-size: 1.15rem;
     }
     .order-product {
         padding: 0.75rem 0.8rem;
         color: #ffffff;
-        background: #164e5a;
         border-radius: 0.45rem;
         font-size: 1.55rem;
         font-weight: 800;
@@ -436,7 +441,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                             history_order, ["tongsotien"]
                         ),
                         "Trạng thái thanh toán": get_normalized_value(
-                            saved_user, ["thanhToanTien"], "Chưa thanh toán"
+                                history_order, ["trangthai"], "Chưa thanh toán"
                         ),
                     })
             else:
@@ -453,7 +458,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                             order_data, ["tongsotien"]
                         ),
                         "Trạng thái thanh toán": get_normalized_value(
-                            saved_user, ["thanhToanTien"], "Chưa thanh toán"
+                            order_data, ["trangthai"], "Chưa thanh toán"
                         ),
                         "Trạng thái tài khoản": "Đã khóa" if is_account_locked(
                             get_normalized_value(saved_user, ["trangthaitaikhoan"], "0")
@@ -489,7 +494,6 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         "thoigiandathang": now.strftime("%d/%m/%Y %H:%M:%S"),
                         "maOrder": new_order_code,
                         "trangthaitaikhoan": 0,
-                        "thanhToanTien": "Chưa thanh toán",
                     }
                     for index, header in enumerate(user_headers):
                         normalized_header = normalize_column_name(header)
@@ -620,10 +624,12 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     "tennguoidung": ten or get_value(user_data, ["ten"]),
                     "monandadat": order_items,
                     "tongsotien": total_price,
-                    "trangthai": get_value(
-                        existing_order["data"] if existing_order else {},
-                        ["trangthai"],
-                        "Chờ xác nhận",
+                    "trangthai": normalize_payment_status(
+                        get_value(
+                            existing_order["data"] if existing_order else {},
+                            ["trangthai"],
+                            "Chưa thanh toán",
+                        )
                     ),
                     "doncu": "Đơn mới",
                 }
@@ -656,8 +662,6 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                         user_sheet.update_cell(user_match["row_number"], index + 1, now.strftime("%d/%m/%Y %H:%M:%S"))
                     elif header == "maOrder":
                         user_sheet.update_cell(user_match["row_number"], index + 1, order_code)
-                    elif normalize_column_name(header) == "thanhtoantien" and not get_normalized_value(user_data, ["thanhToanTien"]):
-                        user_sheet.update_cell(user_match["row_number"], index + 1, "Chưa thanh toán")
                 cfg.clear_sheet_data_cache()
                 if customer_orders:
                     st.success("🎉 Order của bạn đã được cập nhật thành công!")
@@ -671,7 +675,7 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     "items": order_items,
                     "total": total_price,
                     "payment": get_normalized_value(
-                        user_data, ["thanhToanTien"], "Chưa thanh toán"
+                        order_values, ["trangthai"], "Chưa thanh toán"
                     ),
                 }
                 st.rerun()

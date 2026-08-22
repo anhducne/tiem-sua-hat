@@ -22,6 +22,19 @@ def is_old_order_status(value):
     return normalized_value in {"1", "true", "yes", "cu", "don cu", "doncu"}
 
 
+def normalize_payment_status(value):
+    normalized_value = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    normalized_value = normalized_value.replace("đ", "d")
+    normalized_value = "".join(char for char in normalized_value if not unicodedata.combining(char))
+    if normalized_value in {"da thanh toan", "thanh toan", "paid"}:
+        return "Đã thanh toán"
+    return "Chưa thanh toán"
+
+
+def is_paid_status(value):
+    return normalize_payment_status(value) == "Đã thanh toán"
+
+
 def format_admin_order_items(value, week_start=None):
     items = [item.strip() for item in str(value or "").split("|") if item.strip()]
     if week_start is None:
@@ -384,8 +397,7 @@ with tab2:
                         order_code = str(get_field_value(order, "maOrder", "MaOrder", "mã đơn")).strip()
                         if not order_code:
                             continue
-                        order_status = str(order.get("trangthai", "") or "").strip().lower()
-                        is_confirmed = order_status in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"}
+                        is_confirmed = is_paid_status(order.get("trangthai", ""))
                         order_name = str(get_field_value(order, "tennguoidung", "TenNguoiDung", "Tên người dùng")).strip()
                         phone = str(get_field_value(order, "dienthoai", "DienThoai", "SĐT")).strip()
                         checked = st.checkbox(
@@ -409,26 +421,13 @@ with tab2:
                          if normalize_header_name(name) == "trangthai"),
                         None,
                     )
-                    nguoidung_headers = nguoidung_sheet.row_values(1)
-                    payment_col = next(
-                        (idx for idx, name in enumerate(nguoidung_headers, start=1)
-                         if normalize_header_name(name) == "thanhtoantien"),
-                        None,
-                    )
 
                     order_updates = []
-                    user_updates = []
                     for order_code, is_confirmed in selected_states.items():
                         order_row = get_sheet_row_number(orders, "maOrder", order_code)
                         if order_row is not None and donhang_status_col is not None:
                             order_updates.append({
                                 "range": f"{gspread.utils.rowcol_to_a1(order_row, donhang_status_col)}",
-                                "values": [["Đã xác nhận" if is_confirmed else "Chưa xác nhận"]],
-                            })
-                        user_row = get_sheet_row_number(nguoidung_rows, "maOrder", order_code)
-                        if user_row is not None and payment_col is not None:
-                            user_updates.append({
-                                "range": f"{gspread.utils.rowcol_to_a1(user_row, payment_col)}",
                                 "values": [["Đã thanh toán" if is_confirmed else "Chưa thanh toán"]],
                             })
 
@@ -436,11 +435,6 @@ with tab2:
                         for update in order_updates:
                             row_number, column_number = gspread.utils.a1_to_rowcol(update["range"])
                             donhang_sheet.update_cell(row_number, column_number, update["values"][0][0])
-                    if user_updates:
-                        for update in user_updates:
-                            row_number, column_number = gspread.utils.a1_to_rowcol(update["range"])
-                            nguoidung_sheet.update_cell(row_number, column_number, update["values"][0][0])
-
                     clear_admin_order_cache()
                     st.session_state["batch_confirm_dialog"] = False
                     st.rerun()
@@ -530,6 +524,16 @@ with tab2:
             if doncu_column is None:
                 st.error("Sheet DonHang cần có cột doncu để phân biệt đơn mới và đơn cũ.")
                 st.stop()
+            status_column = next(
+                (
+                    index for index, header in enumerate(donhang_headers, start=1)
+                    if normalize_header_name(header) == "trangthai"
+                ),
+                None,
+            )
+            if status_column is None:
+                st.error("Sheet DonHang cần có cột trangthai để lưu trạng thái thanh toán.")
+                st.stop()
 
             new_orders = []
             old_orders = []
@@ -542,6 +546,10 @@ with tab2:
                     week_start <= order_date <= week_end for order_date in order_dates
                 )
                 expected_doncu = "Đơn mới" if is_new_order else "Đơn cũ"
+                normalized_payment_status = normalize_payment_status(order.get("trangthai", ""))
+                if str(order.get("trangthai", "")).strip() != normalized_payment_status:
+                    donhang_sheet.update_cell(row_number, status_column, normalized_payment_status)
+                    order["trangthai"] = normalized_payment_status
                 if str(order.get("doncu", "")).strip() != str(expected_doncu):
                     donhang_sheet.update_cell(row_number, doncu_column, expected_doncu)
                     order["doncu"] = expected_doncu
@@ -557,7 +565,7 @@ with tab2:
             total_due = sum(parse_money(order.get("tongsotien")) for order in current_week_orders)
             confirmed_orders = [
                 order for order in current_week_orders
-                if str(order.get("trangthai", "")).strip().lower() in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"}
+                if is_paid_status(order.get("trangthai", ""))
             ]
             total_collected = sum(parse_money(order.get("tongsotien")) for order in confirmed_orders)
 
@@ -602,7 +610,7 @@ with tab2:
                     "Điện thoại": phone or "Không có SĐT",
                     "Tên": customer_name or "Không có tên",
                     "Ngày đăng ký": get_order_day_labels(order),
-                    "Xác nhận đơn": "Đã xác nhận" if order_status.lower() in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"} else "Chưa xác nhận",
+                    "Thanh toán": "Đã thanh toán" if is_paid_status(order_status) else "Chưa thanh toán",
                     "Tiền": format_money(order.get("tongsotien")),
                     "Chỉnh sửa cuối": str(order.get("thoigianchinhsuacuoi", "") or ""),
                     "Trạng thái Tài khoản": account_status_map.get(order_code, "Hoạt động"),
@@ -613,7 +621,7 @@ with tab2:
                 "Điện thoại",
                 "Tên",
                 "Ngày đăng ký",
-                "Xác nhận đơn",
+                "Thanh toán",
                 "Tiền",
                 "Chỉnh sửa cuối",
                 "Trạng thái Tài khoản",
@@ -702,8 +710,7 @@ with tab2:
                     )
                     locked_value = user_match.get("trangthaitaikhoan", "Hoạt động") if user_match else "Hoạt động"
                     is_locked = is_locked_account_status(locked_value)
-                    current_status = str(selected_order.get("trangthai", "")).strip().lower()
-                    is_confirmed = current_status in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"}
+                    is_confirmed = is_paid_status(selected_order.get("trangthai", ""))
 
                     st.markdown("**Khóa tài khoản**")
                     account_status_options = ["Hoạt động", "Bị khóa"]
@@ -716,8 +723,8 @@ with tab2:
                         label_visibility="collapsed",
                     )
 
-                    st.markdown("**Xác nhận đơn hàng**")
-                    order_status_options = ["Chưa xác nhận", "Đã xác nhận"]
+                    st.markdown("**Trạng thái thanh toán**")
+                    order_status_options = ["Chưa thanh toán", "Đã thanh toán"]
                     selected_order_status = st.selectbox(
                         "",
                         options=order_status_options,
@@ -745,16 +752,6 @@ with tab2:
                                     "values": [[account_status]],
                                 })
 
-                            payment_col = next(
-                                (idx for idx, name in enumerate(nguoidung_headers, start=1)
-                                 if normalize_header_name(name) == "thanhtoantien"),
-                                None,
-                            )
-                            if payment_col is not None:
-                                user_updates.append({
-                                    "range": gspread.utils.rowcol_to_a1(user_row, payment_col),
-                                    "values": [["Đã thanh toán" if new_status == "Đã xác nhận" else "Chưa thanh toán"]],
-                                })
                             if user_updates:
                                 nguoidung_sheet.batch_update(user_updates)
 
@@ -778,7 +775,7 @@ with tab2:
                             revenue_for_week = sum(
                                 parse_money(order.get("tongsotien"))
                                 for order in orders
-                                if str(order.get("trangthai", "")).strip().lower() in {"đã xác nhận", "da xac nhan", "đã nhận đơn", "da nhan don"}
+                                if is_paid_status(order.get("trangthai", ""))
                                 and get_order_date(order) is not None
                                 and week_start <= get_order_date(order) <= week_end
                             )
