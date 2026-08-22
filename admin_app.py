@@ -88,7 +88,7 @@ if not sh:
     st.stop()
 
 if not st.session_state.admin_logged_in:
-    st.image("https://i.pinimg.com/1200x/4d/cb/43/4dcb438b80c4b6224d6c3c8d834a0786.jpg", width=400)
+    st.image("https://i.pinimg.com/1200x/d2/46/1b/d2461bd2bd90650f3aae287803e7eea4.jpg", width=400)
     username = st.text_input("Tên đăng nhập:")
     password = st.text_input("Mật khẩu:", type="password")
     if st.button("Đăng nhập"):
