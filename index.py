@@ -70,9 +70,14 @@ def is_valid_vietnamese_phone(value):
     return bool(re.fullmatch(r"0(?:3|5|7|8|9)\d{8}", value))
 
 
+def is_account_locked(value):
+    normalized_value = normalize_column_name(value)
+    return normalized_value in {"1", "true", "yes", "khoa", "bikhoa", "dakhoa"}
+
+
 def build_order_items(selected_dates, menu_by_date):
     return " | ".join(
-        f"{menu_by_date[menu_date]['day']} - {menu_by_date[menu_date]['food']}"
+        f"{menu_by_date[menu_date]['day']} ({menu_date.strftime('%d/%m')}) - {menu_by_date[menu_date]['food']}"
         for menu_date in selected_dates
     )
 
@@ -242,7 +247,9 @@ if not has_verified_order and not has_checked_phone and check_clicked:
             ]
             if user_matches:
                 user_data = user_matches[0]["data"]
-                account_locked = str(get_normalized_value(user_data, ["trangthaitaikhoan"], "0")).strip() == "1"
+                account_locked = is_account_locked(
+                    get_normalized_value(user_data, ["trangthaitaikhoan"], "0")
+                )
                 if account_locked:
                     st.session_state.account_locked = True
                     st.session_state.checked_phone = sdt
@@ -267,6 +274,27 @@ if not has_verified_order and not has_checked_phone and check_clicked:
         except Exception as error:
             st.error(f"Không thể kiểm tra đơn hàng: {error}")
 
+# Đọc trực tiếp trạng thái tài khoản để khóa có hiệu lực ngay cả khi dữ liệu menu đang được cache.
+if st.session_state.get("checked_phone") == sdt and sdt:
+    try:
+        fresh_user_rows = workbook.worksheet("NguoiDung").get_all_records()
+        fresh_user_match = next(
+            ((row_number, row) for row_number, row in enumerate(fresh_user_rows, start=2)
+             if normalize_phone(get_normalized_value(row, ["dienthoai"], "")) == sdt),
+            None,
+        )
+        if fresh_user_match is not None:
+            fresh_user_row_number, fresh_user_data = fresh_user_match
+            fresh_locked = is_account_locked(
+                get_normalized_value(fresh_user_data, ["trangthaitaikhoan"], "0")
+            )
+            st.session_state.account_locked = fresh_locked
+            st.session_state.user_matches = [{"row_number": fresh_user_row_number, "data": fresh_user_data}]
+            saved_user = fresh_user_data
+    except Exception as error:
+        st.error(f"Không thể cập nhật trạng thái tài khoản: {error}")
+        st.stop()
+
 if st.session_state.get("account_locked") and st.session_state.get("checked_phone") == sdt:
     st.error("Tài khoản bị khóa, vui lòng liên hệ quản trị viên.")
     st.stop()
@@ -290,20 +318,25 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     "Thời gian chỉnh sửa": get_normalized_value(
                         order_data, ["thoigianchinhsuacuoi"]
                     ),
-                    "Món đã đặt": get_normalized_value(
-                        order_data, ["monandadat"]
-                    ),
                     "Tổng số tiền": get_normalized_value(
                         order_data, ["tongsotien"]
                     ),
                     "Trạng thái thanh toán": get_normalized_value(
                         saved_user, ["thanhToanTien"], "Chưa thanh toán"
                     ),
-                    "Trạng thái tài khoản": "Đã khóa" if str(
+                    "Trạng thái tài khoản": "Đã khóa" if is_account_locked(
                         get_normalized_value(saved_user, ["trangthaitaikhoan"], "0")
-                    ).strip() == "1" else "Không bị khóa",
+                    ) else "Không bị khóa",
                 }
                 st.table(detail_order)
+                st.markdown("**Món đã đặt:**")
+                order_items = [
+                    item.strip() for item in str(
+                        get_normalized_value(order_data, ["monandadat"], "")
+                    ).split("|") if item.strip()
+                ]
+                for item in order_items:
+                    st.markdown(f"- {item}")
     else:
         registration_confirmed = st.session_state.get("registration_confirmed", False)
         if not registration_confirmed:
@@ -363,7 +396,9 @@ if st.session_state.get("checked_phone") == sdt and sdt:
         )
         disabled = menu["locked"] or menu["food"] == "-- Không bán --"
         day_label = menu["day"]
-        existing_order_for_date = f"{day_label} - {menu['food']}" in existing_order_text
+        current_order_item = f"{day_label} ({menu_date.strftime('%d/%m')}) - {menu['food']}"
+        old_order_item = f"{day_label} - {menu['food']}"
+        existing_order_for_date = current_order_item in existing_order_text or old_order_item in existing_order_text
         with st.container(border=True):
             st.markdown(
                 f'<div class="order-day-title">{day_label} - {menu_date.strftime("%d/%m/%Y")}</div>',
