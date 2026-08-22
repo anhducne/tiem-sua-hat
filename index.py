@@ -169,6 +169,7 @@ def parse_prices(value):
 logo_path = Path(__file__).parent / "123logo.png"
 bank_image_path = Path(__file__).parent / "bank.jpg"
 st.image(str(logo_path), width=100)
+st.image("https://i.pinimg.com/1200x/87/cd/08/87cd08e9dc0445dcef62d4d32b7b195d.jpg", width=200)
 st.title("🥛 Tiệm Sữa Hạt Cô Hiền Chi 🍦")
 if not st.session_state.get("checked_phone") and not st.session_state.get("order_submitted"):
     st.write("Vui lòng nhập số điện thoại để kiểm tra hoặc tạo order")
