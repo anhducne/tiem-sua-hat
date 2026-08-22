@@ -77,7 +77,7 @@ def is_account_locked(value):
 
 def build_order_items(selected_dates, menu_by_date):
     return " | ".join(
-        f"{menu_by_date[menu_date]['day']} ({menu_date.strftime('%d/%m')}) - {menu_by_date[menu_date]['food']}"
+        f"{menu_by_date[menu_date]['day']} ({menu_date.strftime('%d/%m/%Y')}) - {menu_by_date[menu_date]['food']}"
         for menu_date in selected_dates
     )
 
@@ -90,7 +90,7 @@ def format_order_items(value, menu_dates=None):
     day_names = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
     dated_items = []
     for item in items:
-        if re.search(r"\(\d{2}/\d{2}\)", item):
+        if re.search(r"\(\d{2}/\d{2}(?:/\d{4})?\)", item):
             dated_items.append(item)
             continue
         dated_item = item
@@ -98,12 +98,35 @@ def format_order_items(value, menu_dates=None):
             if item.lower().startswith(f"{day_name.lower()} -") and day_index < len(menu_dates):
                 dated_item = item.replace(
                     f"{day_name} -",
-                    f"{day_name} ({menu_dates[day_index].strftime('%d/%m')}) -",
+                    f"{day_name} ({menu_dates[day_index].strftime('%d/%m/%Y')}) -",
                     1,
                 )
                 break
         dated_items.append(dated_item)
     return dated_items
+
+
+def get_order_item_date(item, reference_year):
+    date_match = re.search(r"\((\d{2}/\d{2})(?:/(\d{4}))?\)", item)
+    if not date_match:
+        return None
+    year = int(date_match.group(2) or reference_year)
+    try:
+        return datetime.strptime(f"{date_match.group(1)}/{year}", "%d/%m/%Y").date()
+    except ValueError:
+        return None
+
+
+def split_current_and_history_items(value, week_dates):
+    current_items = []
+    history_items = []
+    for item in format_order_items(value, week_dates):
+        item_date = get_order_item_date(item, week_dates[0].year)
+        if item_date in week_dates:
+            current_items.append(item)
+        else:
+            history_items.append(item)
+    return current_items, history_items
 
 
 def parse_prices(value):
@@ -353,13 +376,25 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     ) else "Không bị khóa",
                 }
                 st.table(detail_order)
-                st.markdown("**Món đã đặt:**")
-                order_items = format_order_items(
+                current_items, history_items = split_current_and_history_items(
                     get_normalized_value(order_data, ["monandadat"], ""),
                     week_dates,
                 )
-                for item in order_items:
-                    st.markdown(f"- {item}")
+                current_column, history_column = st.columns(2)
+                with current_column:
+                    st.markdown("**Món đã đặt**")
+                    if current_items:
+                        for item in current_items:
+                            st.markdown(f"- {item}")
+                    else:
+                        st.caption("Chưa có món cho tuần này")
+                with history_column:
+                    st.markdown("**Lịch sử đặt món**")
+                    if history_items:
+                        for item in history_items:
+                            st.markdown(f"- {item}")
+                    else:
+                        st.caption("Chưa có lịch sử")
     else:
         registration_confirmed = st.session_state.get("registration_confirmed", False)
         if not registration_confirmed:
@@ -419,9 +454,14 @@ if st.session_state.get("checked_phone") == sdt and sdt:
         )
         disabled = menu["locked"] or menu["food"] == "-- Không bán --"
         day_label = menu["day"]
-        current_order_item = f"{day_label} ({menu_date.strftime('%d/%m')}) - {menu['food']}"
+        current_order_item = f"{day_label} ({menu_date.strftime('%d/%m/%Y')}) - {menu['food']}"
+        previous_order_item = f"{day_label} ({menu_date.strftime('%d/%m')}) - {menu['food']}"
         old_order_item = f"{day_label} - {menu['food']}"
-        existing_order_for_date = current_order_item in existing_order_text or old_order_item in existing_order_text
+        existing_order_for_date = (
+            current_order_item in existing_order_text
+            or previous_order_item in existing_order_text
+            or old_order_item in existing_order_text
+        )
         with st.container(border=True):
             st.markdown(
                 f'<div class="order-day-title">{day_label} - {menu_date.strftime("%d/%m/%Y")}</div>',
@@ -493,7 +533,16 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                     selected_prices.get(menu_date, 0)
                     for menu_date in selected_dates
                 )
-                existing_order = customer_orders[0] if customer_orders else None
+                existing_order = next(
+                    (
+                        order for order in customer_orders
+                        if split_current_and_history_items(
+                            get_normalized_value(order["data"], ["monandadat"], ""),
+                            week_dates,
+                        )[0]
+                    ),
+                    None,
+                )
                 order_values = {
                     "maOrder": order_code,
                     "thoigianchinhsuacuoi": now.strftime("%d/%m/%Y %H:%M:%S"),
