@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 import json
+import re
 from datetime import datetime, timedelta
 import pytz
 import config as cfg
@@ -13,8 +14,38 @@ def is_locked_account_status(value):
     return normalized_value in {"1", "true", "yes", "khoa", "bi khoa", "da khoa"}
 
 
-def format_admin_order_items(value):
-    return [item.strip() for item in str(value or "").split("|") if item.strip()]
+def format_admin_order_items(value, week_start=None):
+    items = [item.strip() for item in str(value or "").split("|") if item.strip()]
+    if week_start is None:
+        return items
+
+    day_names = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+    dated_items = []
+    for item in items:
+        if re.search(r"\(\d{2}/\d{2}\)", item):
+            dated_items.append(item)
+            continue
+        dated_item = item
+        for day_index, day_name in enumerate(day_names):
+            if item.lower().startswith(f"{day_name.lower()} -"):
+                order_date = week_start + timedelta(days=day_index)
+                dated_item = item.replace(
+                    f"{day_name} -",
+                    f"{day_name} ({order_date.strftime('%d/%m')}) -",
+                    1,
+                )
+                break
+        dated_items.append(dated_item)
+    return dated_items
+
+
+def get_admin_order_week_start(current_time):
+    week_start = current_time.date() - timedelta(days=current_time.weekday())
+    if current_time.weekday() == 5 and current_time.hour >= 12:
+        week_start += timedelta(days=7)
+    elif current_time.weekday() == 6:
+        week_start += timedelta(days=7)
+    return week_start
 from auth_utils import get_cookie_manager, read_admin_auth_state, save_admin_auth_state, clear_admin_auth_state
 
 # --- BẢO MẬT ĐĂNG NHẬP ---
@@ -85,8 +116,9 @@ with tab1:
     
     # 1. Tính toán ngày Thứ 2 đến Chủ Nhật của tuần hiện tại
     tz_vn = pytz.timezone('Asia/Ho_Chi_Minh')
-    today = datetime.now(tz_vn).date()
-    start_of_week = today - timedelta(days=today.weekday()) # Lấy ngày Thứ 2 tuần này
+    menu_now_vn = datetime.now(tz_vn)
+    today = menu_now_vn.date()
+    start_of_week = get_admin_order_week_start(menu_now_vn)
     
     days_of_week = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
     week_dates = [start_of_week + timedelta(days=i) for i in range(7)]
@@ -294,7 +326,7 @@ with tab2:
             def _dialog():
                 st.markdown("Chọn những đơn cần xác nhận, sau đó bấm **Lưu xác nhận**.")
                 with st.form("form_batch_confirm_orders"):
-                    selected_codes = []
+                    selected_states = {}
                     for order in orders:
                         order_code = str(get_field_value(order, "maOrder", "MaOrder", "mã đơn")).strip()
                         if not order_code:
@@ -308,8 +340,7 @@ with tab2:
                             value=is_confirmed,
                             key=f"batch_confirm_{order_code}",
                         )
-                        if checked:
-                            selected_codes.append(order_code)
+                        selected_states[order_code] = checked
 
                     save_batch = st.form_submit_button("💾 Lưu xác nhận", use_container_width=True)
                     cancel_batch = st.form_submit_button("❌ Hủy", use_container_width=True)
@@ -334,18 +365,18 @@ with tab2:
 
                     order_updates = []
                     user_updates = []
-                    for order_code in selected_codes:
+                    for order_code, is_confirmed in selected_states.items():
                         order_row = get_sheet_row_number(orders, "maOrder", order_code)
                         if order_row is not None and donhang_status_col is not None:
                             order_updates.append({
                                 "range": f"{gspread.utils.rowcol_to_a1(order_row, donhang_status_col)}",
-                                "values": [["Đã xác nhận"]],
+                                "values": [["Đã xác nhận" if is_confirmed else "Chưa xác nhận"]],
                             })
                         user_row = get_sheet_row_number(nguoidung_rows, "maOrder", order_code)
                         if user_row is not None and payment_col is not None:
                             user_updates.append({
                                 "range": f"{gspread.utils.rowcol_to_a1(user_row, payment_col)}",
-                                "values": [["Đã thanh toán"]],
+                                "values": [["Đã thanh toán" if is_confirmed else "Chưa thanh toán"]],
                             })
 
                     if order_updates:
@@ -427,8 +458,9 @@ with tab2:
                 weekday_names = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
                 return weekday_names[date_value.weekday()]
 
-            today = datetime.now(pytz.timezone("Asia/Ho_Chi_Minh")).date()
-            week_start = today - timedelta(days=today.weekday())
+            now_vn = datetime.now(pytz.timezone("Asia/Ho_Chi_Minh"))
+            today = now_vn.date()
+            week_start = get_admin_order_week_start(now_vn)
             week_end = week_start + timedelta(days=6)
 
             current_week_orders = []
@@ -535,7 +567,11 @@ with tab2:
                 st.markdown(f"**Tên người dùng:** {selected_order.get('tennguoidung', '')}")
                 st.markdown(f"**Số điện thoại:** {selected_order.get('dienthoai', '')}")
                 st.markdown("**Món ăn đã đặt:**")
-                for order_item in format_admin_order_items(selected_order.get("monandadat", "")):
+                current_admin_time = datetime.now(pytz.timezone("Asia/Ho_Chi_Minh"))
+                current_admin_week = get_admin_order_week_start(current_admin_time)
+                for order_item in format_admin_order_items(
+                    selected_order.get("monandadat", ""), current_admin_week
+                ):
                     st.markdown(f"- {order_item}")
                 st.markdown(f"**Tổng số tiền:** {format_money(selected_order.get('tongsotien'))}")
                 st.markdown(f"**Trạng thái:** {selected_order.get('trangthai', '')}")

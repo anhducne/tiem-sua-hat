@@ -82,8 +82,28 @@ def build_order_items(selected_dates, menu_by_date):
     )
 
 
-def format_order_items(value):
-    return [item.strip() for item in str(value or "").split("|") if item.strip()]
+def format_order_items(value, menu_dates=None):
+    items = [item.strip() for item in str(value or "").split("|") if item.strip()]
+    if not menu_dates:
+        return items
+
+    day_names = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+    dated_items = []
+    for item in items:
+        if re.search(r"\(\d{2}/\d{2}\)", item):
+            dated_items.append(item)
+            continue
+        dated_item = item
+        for day_index, day_name in enumerate(day_names):
+            if item.lower().startswith(f"{day_name.lower()} -") and day_index < len(menu_dates):
+                dated_item = item.replace(
+                    f"{day_name} -",
+                    f"{day_name} ({menu_dates[day_index].strftime('%d/%m')}) -",
+                    1,
+                )
+                break
+        dated_items.append(dated_item)
+    return dated_items
 
 
 def parse_prices(value):
@@ -334,7 +354,10 @@ if st.session_state.get("checked_phone") == sdt and sdt:
                 }
                 st.table(detail_order)
                 st.markdown("**Món đã đặt:**")
-                order_items = format_order_items(get_normalized_value(order_data, ["monandadat"], ""))
+                order_items = format_order_items(
+                    get_normalized_value(order_data, ["monandadat"], ""),
+                    week_dates,
+                )
                 for item in order_items:
                     st.markdown(f"- {item}")
     else:
