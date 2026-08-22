@@ -1,5 +1,4 @@
 import streamlit as st
-import gspread
 import json
 from datetime import datetime
 import pytz
@@ -7,18 +6,11 @@ import config as cfg
 # Cấu hình trang
 st.set_page_config(page_title="Tiệm Sữa Hạt", layout="centered")
 
-# --- KẾT NỐI SHEETS ---
-def get_data_from_sheet(sheet_name):
-    gc = gspread.service_account(filename='C:/Users/Bee/Desktop/ShopMilkPy/milkshop-506107-19ac8c82c7b0.json')
-    sh = gc.open_by_url("https://docs.google.com/spreadsheets/d/1XD3D4Gs3SI9aQB1aWfgZ_5wHsqNpjswDv_4EfTc708I/edit?usp=sharing")
-    return sh.worksheet(sheet_name)
-
 # --- GIAO DIỆN CHÍNH ---
 st.title("🥛 Tiệm Sữa Hạt")
 
 # 1. Hiển thị thông tin tuần
-menu_sheet = get_data_from_sheet("NguoiDung") # Đổi tên tab menu của bạn
-menu_data = menu_sheet.get_all_values()
+menu_data, _ = cfg.get_sheet_data("NguoiDung")
 st.write("### Bạn đã đăng ký sữa cho tuần này chưa?")
 st.table(menu_data[1:]) # Hiển thị bảng menu từ hàng 2 trở đi
 

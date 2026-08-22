@@ -373,27 +373,6 @@ if not has_verified_order and not has_checked_phone and check_clicked:
         except Exception as error:
             st.error(f"Không thể kiểm tra đơn hàng: {error}")
 
-# Đọc trực tiếp trạng thái tài khoản để khóa có hiệu lực ngay cả khi dữ liệu menu đang được cache.
-if st.session_state.get("checked_phone") == sdt and sdt:
-    try:
-        fresh_user_rows = workbook.worksheet("NguoiDung").get_all_records()
-        fresh_user_match = next(
-            ((row_number, row) for row_number, row in enumerate(fresh_user_rows, start=2)
-             if normalize_phone(get_normalized_value(row, ["dienthoai"], "")) == sdt),
-            None,
-        )
-        if fresh_user_match is not None:
-            fresh_user_row_number, fresh_user_data = fresh_user_match
-            fresh_locked = is_account_locked(
-                get_normalized_value(fresh_user_data, ["trangthaitaikhoan"], "0")
-            )
-            st.session_state.account_locked = fresh_locked
-            st.session_state.user_matches = [{"row_number": fresh_user_row_number, "data": fresh_user_data}]
-            saved_user = fresh_user_data
-    except Exception as error:
-        st.error(f"Không thể cập nhật trạng thái tài khoản: {error}")
-        st.stop()
-
 if st.session_state.get("account_locked") and st.session_state.get("checked_phone") == sdt:
     st.error("Tài khoản bị khóa, vui lòng liên hệ quản trị viên.")
     st.stop()

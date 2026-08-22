@@ -108,7 +108,8 @@ if not st.session_state.admin_logged_in:
         try:
             @st.cache_data(ttl=300)
             def load_admin_rows():
-                return sh.worksheet("QuanTriVien").get_all_records()
+                _, admin_rows = cfg.get_sheet_data("QuanTriVien")
+                return admin_rows
 
             admin_rows = load_admin_rows()
             valid_login = any(
@@ -191,8 +192,8 @@ with tab1:
 
     # 2. Đọc MenuTuan để khôi phục cấu hình của tuần hiện tại nếu có
     try:
-        order_sheet = sh.worksheet("MenuTuan")
-        menu_tuan_rows = order_sheet.get_all_records()
+        order_sheet = cfg.get_worksheet("MenuTuan")
+        _, menu_tuan_rows = cfg.get_sheet_data("MenuTuan")
     except Exception:
         order_sheet = None
         menu_tuan_rows = []
@@ -210,8 +211,9 @@ with tab1:
 
     # 3. Lấy danh sách món ăn từ Tab Menu để làm Dropdownlist
     try:
-        monan_sheet = sh.worksheet("Menu")
-        list_mon_an = [row["nguyenlieu"] for row in monan_sheet.get_all_records() if row.get("nguyenlieu")]
+        monan_sheet = cfg.get_worksheet("Menu")
+        _, menu_rows = cfg.get_sheet_data("Menu")
+        list_mon_an = [row["nguyenlieu"] for row in menu_rows if row.get("nguyenlieu")]
     except Exception:
         list_mon_an = ["Sữa Óc Chó", "Sữa Hạnh Nhân", "Sữa Hạt Điều", "Sữa Đậu Đen"]
         st.warning("Chưa có dữ liệu món ăn trên Sheets, đang dùng danh sách mặc định.")
@@ -266,18 +268,18 @@ with tab1:
 with tab2:
     st.header("🛒 Danh Sách Đơn Đặt Hàng")
     try:
-        donhang_sheet = sh.worksheet("DonHang")
-        nguoidung_sheet = sh.worksheet("NguoiDung")
+        donhang_sheet = cfg.get_worksheet("DonHang")
+        nguoidung_sheet = cfg.get_worksheet("NguoiDung")
         try:
-            thuchi_sheet = sh.worksheet("ThuChi")
+            thuchi_sheet = cfg.get_worksheet("ThuChi")
         except Exception:
             thuchi_sheet = None
 
-        @st.cache_data(ttl=30)
+        @st.cache_data(ttl=120)
         def load_admin_order_cache():
-            orders = donhang_sheet.get_all_records()
-            users = nguoidung_sheet.get_all_records()
-            thuchi_rows = thuchi_sheet.get_all_records() if thuchi_sheet is not None else []
+            _, orders = cfg.get_sheet_data("DonHang")
+            _, users = cfg.get_sheet_data("NguoiDung")
+            _, thuchi_rows = cfg.get_sheet_data("ThuChi") if thuchi_sheet is not None else ([], [])
             return orders, users, thuchi_rows
 
         def clear_admin_order_cache():
@@ -288,6 +290,10 @@ with tab2:
 
         def normalize_header_name(value):
             return str(value or "").strip().lower()
+
+        def get_cached_headers(sheet_name):
+            values, _ = cfg.get_sheet_data(sheet_name)
+            return values[0] if values else []
 
         def get_sheet_row_number(rows, key_name, value):
             for index, row in enumerate(rows, start=2):
@@ -345,7 +351,7 @@ with tab2:
                             st.error("Không tìm thấy đơn hàng cần sửa.")
                             return
 
-                        donhang_headers = donhang_sheet.row_values(1)
+                        donhang_headers = get_cached_headers("DonHang")
                         for column_name, new_value in {
                             "tennguoidung": ten_moi,
                             "dienthoai": so_dien_thoai.strip(),
@@ -361,7 +367,7 @@ with tab2:
 
                         user_row = get_sheet_row_number(nguoidung_rows, "maOrder", order_code)
                         if user_row is not None:
-                            nguoidung_headers = nguoidung_sheet.row_values(1)
+                            nguoidung_headers = get_cached_headers("NguoiDung")
                             for key, value in {
                                 "ten": ten_moi,
                                 "dienthoai": so_dien_thoai.strip(),
@@ -415,7 +421,7 @@ with tab2:
                     st.rerun()
 
                 if save_batch:
-                    donhang_headers = donhang_sheet.row_values(1)
+                    donhang_headers = get_cached_headers("DonHang")
                     donhang_status_col = next(
                         (idx for idx, name in enumerate(donhang_headers, start=1)
                          if normalize_header_name(name) == "trangthai"),
@@ -513,7 +519,7 @@ with tab2:
             week_start = get_admin_order_week_start(now_vn)
             week_end = week_start + timedelta(days=6)
 
-            donhang_headers = donhang_sheet.row_values(1)
+            donhang_headers = get_cached_headers("DonHang")
             doncu_column = next(
                 (
                     index for index, header in enumerate(donhang_headers, start=1)
@@ -739,7 +745,7 @@ with tab2:
 
                         user_row = get_sheet_row_number(nguoidung_rows, "maOrder", str(selected_order.get("maOrder", "")).strip())
                         if user_row is not None:
-                            nguoidung_headers = nguoidung_sheet.row_values(1)
+                            nguoidung_headers = get_cached_headers("NguoiDung")
                             user_updates = []
                             status_col = next(
                                 (idx for idx, name in enumerate(nguoidung_headers, start=1)
@@ -757,7 +763,7 @@ with tab2:
 
                         row_number = get_sheet_row_number(orders, "maOrder", str(selected_order.get("maOrder", "")).strip())
                         if row_number is not None:
-                            donhang_headers = donhang_sheet.row_values(1)
+                            donhang_headers = get_cached_headers("DonHang")
                             status_col = next(
                                 (idx for idx, name in enumerate(donhang_headers, start=1)
                                  if normalize_header_name(name) == "trangthai"),
@@ -779,7 +785,7 @@ with tab2:
                                 and get_order_date(order) is not None
                                 and week_start <= get_order_date(order) <= week_end
                             )
-                            thuchi_rows = thuchi_sheet.get_all_records()
+                            _, thuchi_rows = cfg.get_sheet_data("ThuChi")
                             match_row = next(
                                 (row for row in thuchi_rows if str(row.get("Nam", "")).strip() == str(today.year) and str(row.get("Thang", "")).strip() == str(today.month) and str(row.get("Tuan", "")).strip() == str(week_index) and str(row.get("Ngay", "")).strip() == week_label),
                                 None,
@@ -826,8 +832,8 @@ with tab2:
 with tab3:
     st.header("🥛 Quản Lý Danh Mục Món Ăn")
     try:
-        monan_sheet = sh.worksheet("Menu")
-        ds_mon = monan_sheet.get_all_records()
+        monan_sheet = cfg.get_worksheet("Menu")
+        _, ds_mon = cfg.get_sheet_data("Menu")
 
         if "editing_food_idx" not in st.session_state:
             st.session_state["editing_food_idx"] = None

@@ -28,12 +28,19 @@ def get_spreadsheet():
         return None
 
 
-@st.cache_data(ttl=30)
-def get_sheet_data(sheet_name):
+@st.cache_resource
+def get_worksheet(sheet_name):
     spreadsheet = get_spreadsheet()
     if spreadsheet is None:
+        return None
+    return spreadsheet.worksheet(sheet_name)
+
+
+@st.cache_data(ttl=120)
+def get_sheet_data(sheet_name):
+    worksheet = get_worksheet(sheet_name)
+    if worksheet is None:
         return [], []
-    worksheet = spreadsheet.worksheet(sheet_name)
     values = worksheet.get_all_values()
     if not values:
         return [], []
