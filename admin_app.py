@@ -47,6 +47,22 @@ def format_admin_order_items(value, week_start=None):
     return dated_items
 
 
+def get_order_item_dates(value, reference_year):
+    dates = []
+    for item in format_admin_order_items(value):
+        date_match = re.search(r"\((\d{2}/\d{2})(?:/(\d{4}))?\)", item)
+        if not date_match:
+            continue
+        year = int(date_match.group(2) or reference_year)
+        try:
+            dates.append(datetime.strptime(
+                f"{date_match.group(1)}/{year}", "%d/%m/%Y"
+            ).date())
+        except ValueError:
+            continue
+    return dates
+
+
 def get_admin_order_week_start(current_time):
     week_start = current_time.date() - timedelta(days=current_time.weekday())
     if current_time.weekday() == 5 and current_time.hour >= 12:
@@ -488,10 +504,14 @@ with tab2:
 
             new_orders = []
             old_orders = []
+            old_order_row_numbers = []
             for row_number, order in enumerate(orders, start=2):
-                modified_datetime = get_last_modified_date(order)
-                order_date = modified_datetime.date() if modified_datetime is not None else None
-                is_new_order = order_date is not None and week_start <= order_date <= week_end
+                order_dates = get_order_item_dates(
+                    order.get("monandadat", ""), week_start.year
+                )
+                is_new_order = bool(order_dates) and all(
+                    week_start <= order_date <= week_end for order_date in order_dates
+                )
                 expected_doncu = "Đơn mới" if is_new_order else "Đơn cũ"
                 if str(order.get("doncu", "")).strip() != str(expected_doncu):
                     donhang_sheet.update_cell(row_number, doncu_column, expected_doncu)
@@ -500,6 +520,7 @@ with tab2:
                     new_orders.append(order)
                 else:
                     old_orders.append(order)
+                    old_order_row_numbers.append(row_number)
 
             current_week_orders = new_orders
 
@@ -585,6 +606,11 @@ with tab2:
                         pd.DataFrame(old_order_rows, columns=column_order),
                         use_container_width=True,
                     )
+                    if st.button("🗑️ Xóa toàn bộ đơn cũ", type="secondary"):
+                        for row_number in sorted(old_order_row_numbers, reverse=True):
+                            donhang_sheet.delete_rows(row_number)
+                        clear_admin_order_cache()
+                        st.rerun()
                 else:
                     st.info("Chưa có đơn cũ nào.")
 
